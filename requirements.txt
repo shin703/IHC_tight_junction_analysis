@@ -1,0 +1,11 @@
+numpy==1.26.4
+opencv-python
+Pillow
+tifffile
+scipy
+scikit-image
+tensorflow
+stardist
+csbdeep
+imagecodecs==2024.12.30
+pyinstaller
