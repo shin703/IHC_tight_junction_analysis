@@ -83,11 +83,52 @@ pip install --no-deps imagecodecs==2024.12.30
 import csv
 import json
 import math
+import os
 import queue
 import re
+import sys
 import threading
 import traceback
 from pathlib import Path
+
+
+# ============================================================
+# Safe stdout/stderr for windowed PyInstaller builds
+# ============================================================
+# PyInstaller with console=False sets sys.stdout / sys.stderr to None on
+# Windows. StarDist internally uses tqdm for tiled prediction, and tqdm
+# expects a writable stream. Without this guard, StarDist can fail with:
+#     AttributeError: 'NoneType' object has no attribute 'write'
+# Keep the devnull handles alive for the lifetime of the application.
+_DEVNULL_STREAMS = []
+
+
+def ensure_writable_standard_streams():
+    global _DEVNULL_STREAMS
+
+    for name in ("stdout", "stderr"):
+        stream = getattr(sys, name, None)
+
+        if stream is not None and hasattr(stream, "write"):
+            continue
+
+        try:
+            replacement = open(
+                os.devnull,
+                "w",
+                encoding="utf-8",
+                buffering=1,
+            )
+        except Exception:
+            # Last-resort in-memory writer. This path should almost never be used.
+            import io
+            replacement = io.StringIO()
+
+        setattr(sys, name, replacement)
+        _DEVNULL_STREAMS.append(replacement)
+
+
+ensure_writable_standard_streams()
 
 import cv2
 import numpy as np
@@ -2985,6 +3026,10 @@ class StarDistNucleiSegmenter:
             max(1, int(np.ceil(h / 1024))),
             max(1, int(np.ceil(w / 1024))),
         )
+
+        # In a PyInstaller windowed EXE, stdout/stderr can be None.
+        # StarDist/tqdm requires a writable stream during tiled prediction.
+        ensure_writable_standard_streams()
 
         labels, _ = cls.get_model().predict_instances(
             normalized,

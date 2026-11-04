@@ -9,6 +9,17 @@ The application uses one window with two tabs, so preprocessing and analysis can
 
 ---
 
+## v1.3 — StarDist fix for Windows EXE
+
+When the application is built with PyInstaller in windowed mode (`console=False`), Windows may set `sys.stdout` and `sys.stderr` to `None`. StarDist uses `tqdm` internally for tiled prediction, which can then raise:
+
+```text
+AttributeError: 'NoneType' object has no attribute 'write'
+```
+
+v1.3 creates safe writable fallback streams automatically. This does not change StarDist segmentation parameters or image data; it only prevents the internal progress display from crashing the GUI executable.
+
+
 ## Japanese / English GUI
 
 The integrated GUI can be switched between **日本語** and **English** without restarting the application.
